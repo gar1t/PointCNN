@@ -27,6 +27,8 @@ def main():
     parser.add_argument('--save_folder', '-s', help='Path to folder for saving check points and summary', required=True)
     parser.add_argument('--model', '-m', help='Model to use', required=True)
     parser.add_argument('--setting', '-x', help='Setting to use', required=True)
+    parser.add_argument('--epochs', help='Number of training epochs (default defined in setting)', type=int)
+    parser.add_argument('--batch_size', help='Batch size (default defined in setting)', type=int)
     parser.add_argument('--log', help='Log to FILE in save folder; use - for stdout (default is log.txt)', metavar='FILE', default='log.txt')
     parser.add_argument('--no_timestamp_folder', help='Dont save to timestamp folder', action='store_true')
     parser.add_argument('--no_code_backup', help='Dont backup code', action='store_true')
@@ -52,8 +54,8 @@ def main():
     sys.path.append(setting_path)
     setting = importlib.import_module(args.setting)
 
-    num_epochs = setting.num_epochs
-    batch_size = setting.batch_size
+    num_epochs = args.epochs or setting.num_epochs
+    batch_size = args.batch_size or setting.batch_size
     sample_num = setting.sample_num
     step_val = setting.step_val
     rotation_range = setting.rotation_range
