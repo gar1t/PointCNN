@@ -35,11 +35,11 @@ for area in os.listdir(args.data_dir):
             continue
         path_gt_label = os.path.join(path_room, 'label.npy')
         if not os.path.exists(path_gt_label):
-            print("WARNING: %s does not exist, skipping" % path_gt_label)
+            print("%s does not exist, skipping" % path_gt_label)
             continue
         path_pred_label = os.path.join(path_room, 'pred.npy')
         if not os.path.exists(path_pred_label):
-            print("WARNING: %s does not exist, skipping" % path_pred_label)
+            print("%s does not exist, skipping" % path_pred_label)
             continue
         pred_label_filenames.append(path_pred_label)
         gt_label_filenames.append(path_gt_label)
