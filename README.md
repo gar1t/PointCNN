@@ -62,6 +62,8 @@ If you can only use Tensorflow 1.5 because of OS factor(UBUNTU 14.04),please mod
 
 Here we list the commands for training/evaluating PointCNN on classification and segmentation tasks on multiple datasets.
 
+Alternatively, you can use [Guild AI](https://guild.ai) to run most operations for PointCNN. Guild AI captures each run as a unique experiment for tracking and comparison. See [*PointCNN and Guild AI*](README_guild.md) for details.
+
 * ### Classification
 
   * #### ModelNet40
