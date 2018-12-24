@@ -45,6 +45,10 @@ def main():
     for folder in folders:
         datasets = [filename[:-4] for filename in os.listdir(folder) if filename.endswith('.txt')]
         for dataset_idx, dataset in enumerate(datasets):
+            dataset_marker = os.path.join(folder, dataset, ".dataset")
+            if os.path.exists(dataset_marker):
+                print('{}-{}/{} already processed, skipping'.format(datetime.now(), folder, dataset))
+                continue
             filename_txt = os.path.join(folder, dataset + '.txt')
             print('{}-Loading {}...'.format(datetime.now(), filename_txt))
             xyzirgb = np.loadtxt(filename_txt)
@@ -236,6 +240,8 @@ def main():
                             idx_h5 = idx_h5 + 1
                         idx = idx + 1
 
+            # Marker indicating we've processed this dataset
+            open(dataset_marker, "w").close()
 
 if __name__ == '__main__':
     main()
