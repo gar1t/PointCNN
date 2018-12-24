@@ -24,7 +24,7 @@ your environment before running these commands.
 | Classification | CIFAR-10    | `$ guild run prepare-cifar10`<br> `$ guild run train-cls dataset=cifar10` |
 | Classification | ScanNet     | *Not supported in guild.yml - refer to [steps in README](README.md#scannet)* |
 | Segmentation   | ShapeNet    | `$ guild run prepare-shapenet`<br> `$ guild run train-seg-shapenet`<br> `$ guild run test-seg-shapenet`<br> `$ guild run evaluate-seg-shapenet` |
-| Segmentation   | S3DIS       | [Download S3DIS data](http://buildingparser.stanford.edu/dataset.html#Download) before running these commands.<br>`$ guild run prepare-s3dis-labels data=<path to unpacked S3DIS data>`<br> `$ guild run prepare-s3dis-data`<br> `$ guild run prepare-s3dis-filelists`<br> `$ guild run train-seg-s3dis`<br> `$ guild run test-seg-s3dis`<br> `$ guild run merge-s3dis-predictions`<br> `$ guild run evaluate-seg-s3dis` |
+| Segmentation   | S3DIS       | [Download S3DIS data](http://buildingparser.stanford.edu/dataset.html#Download) before running these commands.<br>`$ guild run prepare-s3dis-labels data=<path to unpacked guild run prepare-s3dis-labels data=<path to unpacked Stanford3dDataset_v1.2_Aligned_Version>`<br> `$ guild run prepare-s3dis-data`<br> `$ guild run prepare-s3dis-filelists`<br> `$ guild run train-seg-s3dis`<br> `$ guild run test-seg-s3dis`<br> `$ guild run merge-s3dis-predictions`<br> `$ guild run evaluate-seg-s3dis` |
 | Segmentation   | ScanNet     | *Not supported in guild.yml - refer to [steps in README](README.md#scannet-1)* |
 | Segmentation   | Semantic 3D | `$ guild run download-semantic3d`<br> `$ guild run prepare-semantic3d-data`<br> `$ guild run ` |
 
