@@ -375,10 +375,6 @@
           - save_ply
       label: semantic3d
 
-    delme:
-      pre-process: sleep 10
-      main: guild.pass
-
   resources:
 
     # ===================================================================
