@@ -375,6 +375,16 @@
           - save_ply
       label: semantic3d
 
+    prepare-semantic3d-filelists:
+      description: Prepare semantic-8 file lists
+      main: data_conversions/prepare_semantic3d_filelists --folder semantic3d
+      requires: semantic3d-data
+      flags:
+        $import:
+          - h5_num
+          - repeat_num
+      label: semantic3d
+
   resources:
 
     # ===================================================================
@@ -530,6 +540,11 @@
     semantic3d-raw:
       sources:
         - operation: download-semantic3d
+
+    semantic3d-data:
+      path: semantic3d
+      sources:
+        - operation: prepare-semantic3d-data
 
     # ===================================================================
     # tf_sampling resource
