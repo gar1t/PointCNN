@@ -580,7 +580,7 @@
       flags:
         dataset: modelnet
         batch_size: 4
-      stop-after: 1
+        epochs: 1
       expect:
         - output: 'Loss: .+  T-1 Acc: .+  T-1 mAcc: .+'
 
@@ -592,7 +592,7 @@
       flags:
         dataset: mnist
         batch_size: 4
-      stop-after: 1
+        epochs: 1
       expect:
         - output: 'Loss: .+  T-1 Acc: .+  T-1 mAcc: .+'
 
@@ -604,7 +604,7 @@
       flags:
         dataset: cifar10
         batch_size: 4
-      stop-after: 1
+        epochs: 1
       expect:
         - output: 'Loss: .+  T-1 Acc: .+  T-1 mAcc: .+'
 
@@ -616,8 +616,7 @@
       flags:
         dataset: quick_draw
         batch_size: 4
-      # Data prep takes quite a while
-      stop-after: 120
+        epochs: 1
 
 - test: cls-tu-berlin
   steps:
@@ -627,7 +626,7 @@
       flags:
         dataset: tu_berlin
         batch_size: 4
-      stop-after: 1
+        epochs: 1
       expect:
         - output: 'Loss: .+  T-1 Acc: .+  T-1 mAcc: .+'
 
