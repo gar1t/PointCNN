@@ -19,6 +19,7 @@ your environment before running these commands.
 | -------------- | ----------- | -------- |
 | Classification | Modelnet    | `$ guild run train-cls dataset=modelnet` |
 | Classification | TU Berlin   | `$ guild run prepare-tu-berlin`<br> `$ guild run train-cls dataset=tu_berlin` |
+| Classification | Quick Draw  | `$ guild run prepare-quick-draw`<br> `$ guild run train-cls dataset=quickdraw` |
 | Classification | MNIST       | `$ guild run prepare-mnist`<br> `$ guild run train-cls dataset=mnist` |
 | Classification | CIFAR-10    | `$ guild run prepare-cifar10`<br> `$ guild run train-cls dataset=cifar10` |
 | Classification | ScanNet     | *Not supported in guild.yml - refer to [steps in README](README.md#scannet)* |
