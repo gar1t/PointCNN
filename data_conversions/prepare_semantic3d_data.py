@@ -45,7 +45,7 @@ def main():
     for folder in folders:
         datasets = [filename[:-4] for filename in os.listdir(folder) if filename.endswith('.txt')]
         for dataset_idx, dataset in enumerate(datasets):
-            dataset_marker = os.path.join(folder, dataset, ".dataset")
+            dataset_marker = os.path.join(folder, ".dataset_%s" % dataset)
             if os.path.exists(dataset_marker):
                 print('{}-{}/{} already processed, skipping'.format(datetime.now(), folder, dataset))
                 continue
