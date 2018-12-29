@@ -1,145 +1,66 @@
 # ===================================================================
-# PointCNN
+# Classification - base config
 # ===================================================================
 
-- model: pointcnn
-  description: >
-    PointCNN for classification and segmentation
-
-    PointCNN is a simple and general framework for feature learning
-    from point cloud, which refreshed five benchmark records in point
-    cloud processing (as of Jan. 23, 2018), including:
-
-    - classification accuracy on ModelNet40 (91.7%, with 1024 input
-    points only)
-
-    - classification accuracy on ScanNet (77.9%)
-
-    - segmentation part averaged IoU on ShapeNet Parts (86.13%)
-
-    - segmentation mean IoU on S3DIS (65.39%)
-
-    - per voxel labelling accuracy on ScanNet (85.1%)
-
-  default: yes
-  extra:
-    scalars:
-      loss: summary/loss/train
-      loss_step: summary/loss/train_step
-      val_acc: summary/t_1_acc/val
-
+- config: cls-base
+  params:
+    train-data-path: data/train_files.txt
+    val-data-path: data/test_files.txt
   operations:
-
-    # ===================================================================
-    # MNIST prep
-    # ===================================================================
-
-    prepare-mnist:
-      description: Prepare MNIST dataset for training
-      main: data_conversions/prepare_mnist_data --folder mnist
-      requires: mnist-raw
-      label: mnist
-
-    # ===================================================================
-    # CIFAR-10 prep
-    # ===================================================================
-
-    prepare-cifar10:
-      description: Prepare CIFAR-10 dataset for training
-      main: data_conversions/prepare_cifar10_data --folder cifar10
-      requires: cifar10-raw
-      label: cifar10
-
-    # ===================================================================
-    # Quick Draw prep
-    # ===================================================================
-
-    prepare-quick-draw:
-      description: Prepare Quick Draw! dataset for training
-      main: data_conversions/download_datasets --dataset quick_draw --folder .
-      label: quick_draw
-
-    # ===================================================================
-    # TU Berlin prep
-    # ===================================================================
-
-    prepare-tu-berlin:
-      description: Prepare TU Berlin dataset for training
-      main:
-        data_conversions/prepare_tu_berlin_data
-          --folder tu_berlin
-          --augment
-          --create-train-test
-      requires: tu_berlin-raw
-      label: tu_berlin
-
-    # ===================================================================
-    # General classification
-    # ===================================================================
-
-    train-cls:
-      description: Train PointCNN for classification
+    train:
+      description: Train model for classification
       main:
         train_val_cls
           --model pointcnn_cls
+          --path {{train-data-path}}
+          --path_val {{val-data-path}}
           --save_folder .
           --no_timestamp_folder
           --no_code_backup
           --log -
-      requires: ${dataset}-dataset
-      label: ${dataset}
+      requires: prepared-data
+      compare:
+        - =epochs
+        - =setting
+        - max t_1_acc/val as accuracy
       flags:
-        dataset:
-          description: Dataset to train
-          required: yes
-          arg-skip: yes
-          choices:
-            - value: modelnet
-              description: Princeton ModelNet 40
-              args:
-                path: data/train_files.txt
-                path_val: data/test_files.txt
-                setting: modelnet_x3_l4
-            - value: mnist
-              description: MNIST handwritten digits
-              args:
-                path: data/train_files.txt
-                path_val: data/test_files.txt
-                setting: mnist_x2_l4
-            - value: cifar10
-              description: CIFAR-10 tiny images
-              args:
-                path: data/train_files.txt
-                path_val: data/test_files.txt
-                setting: cifar10_x3_l4
-            - value: quick_draw
-              description: Quick Draw! sketches
-              args:
-                path: data
-                setting: quick_draw_full_x2_l6
-            - value: tu_berlin
-              description: TU Berlin sketches
-              args:
-                path: data/train_files.txt
-                path_val: data/test_files.txt
-                setting: tu_berlin_x3_l4
+        $import:
+          - epochs
+          - batch_size
         setting:
-          description: >
-            Setting to use for operation
+          description: Setting to use for operation
+          choices: []
+          required: yes
+          allow-other: yes
 
-            NOTE: this value must support the specified dataset. For
-            example, if you are training on the 'cifar10' dataset,
-            setting should start with 'cifar10'
-            (e.g. 'cifar10_x3_l4').
+# ===================================================================
+# Classification - ScanNet
+# ===================================================================
 
-            If you do not specify this value, the default for the
-            specified dataset is used.
+- model: cls-scannet
+  description: PointCNN classifier on ScanNet (not currently supported)
+  operations:
+    train:
+      description: Placeholder for ScanNet train
+      main:
+        guild.fail 'This operation is not currently implemented. Refer'
+                   'to https://github.com/yangyanli/PointCNN#scannet for'
+                   'manual steps.'
 
-            If you want to customize the the settings, create a new
-            module in pointcnn_cls and use its name for this value.
+# ===================================================================
+# Classification - ModelNet
+# ===================================================================
+
+- model: cls-modelnet
+  description: PointCNN classifier on Princeton ModelNet 40 dataset
+  extends: cls-base
+  operations:
+    train:
+      requires: modelnet-data
+      flags:
+        setting:
+          default: modelnet_x3_l4
           choices:
-            - cifar10_x3_l4
-            - mnist_x2_l4
             - modelnet_x3_l4_aligned
             - modelnet_x3_l4_aligned_w_fts
             - modelnet_x3_l4_no_X
@@ -148,266 +69,96 @@
             - modelnet_x3_l4_w_fts
             - modelnet_x3_l4_yxz
             - modelnet_x3_l5_no_X
-            - quick_draw_full_x2_l6
-            - tu_berlin_x3_l4
-          allow-other: yes
-          null-label: default for dataset
-        $import:
-          - epochs
-          - batch_size
-
-    # ===================================================================
-    # ShapeNet segmentation
-    # ===================================================================
-
-    prepare-shapenet:
-      description: Prepare ShapeNet part segmentation dataset for training
-      main: data_conversions/prepare_partseg_data --folder .
-      requires: shapenet-raw
-      flags:
-        $import: save_ply
-      label: shapenet
-
-    train-seg-shapenet:
-      description: Train PointCNN for segmentation on ShapeNet
-      main:
-        train_val_seg
-          --model pointcnn_seg
-          --filelist data/train_val_files.txt
-          --filelist_val data/test_files.txt
-          --save_folder .
-          --no_timestamp_folder
-          --no_code_backup
-          --log -
-      requires:
-        - shapenet-dataset
-        - tf-sampling
-      flags:
-        setting:
-          description: >
-            Setting to use for operation
-
-            NOTE: this value must support the ShapeNet dataset
-            (e.g. 'shapenet_x8_2048_fps').
-
-            If you want to customize the the settings, create a new
-            module in pointcnn_seg and use its name for this value.
-          default: shapenet_x8_2048_fps
-          choices:
-            - shapenet_x8_2048_fps
-          allow-other: yes
-        $import:
-          - epochs
-          - batch_size
-      label: shapenet
-
-    test-seg-shapenet:
-      description: Test trained PointCNN model for segmentation on ShapeNet
-      main:
-        test_shapenet_seg
-          --filelist data/test_files.txt
-          --category data/categories.txt
-          --data_folder data/test_data
-          --model pointcnn_seg
-          --load_ckpt ckpts/iter-${step}
-      requires:
-        - shapenet-dataset
-        - shapenet-seg-ckpts
-      flags:
-        $include:
-          - pointcnn:train-seg-shapenet#setting
-        $import:
-          - repeat_num
-          - sample_num
-        step:
-          description: Checkpoint step to test
-          required: yes
-          arg-skip: yes
-      label: shapenet
-
-    evaluate-seg-shapenet:
-      description: Evaluate PointCNN model for segmentation on ShapeNet
-      main:
-        evaluation/eval_shapenet_seg
-          --folder_gt data/test_label
-          --folder_pred test_data_pred_nips_1
-          --part_avg
-      requires:
-        - shapenet-dataset
-        - shapenet-seg-tests
-      label: shapenet
-
-    # ===================================================================
-    # S3DIS segmentation
-    # ===================================================================
-
-    prepare-s3dis-labels:
-      description: Prepare S3DIS labels
-      main: data_conversions/prepare_s3dis_label --folder .
-      flags:
-        data:
-          description: Path to Stanford3dDataset_v1.2_Aligned_Version
-          required: yes
-      label: s3dis
-
-    prepare-s3dis-data:
-      description: Prepare S3DIS data
-      main: data_conversions/prepare_s3dis_data --folder s3dis
-      requires: s3dis-labels
-      flags:
-        $import:
-          - block_size
-          - grid_size
-          - save_ply
-      label: s3dis
-
-    prepare-s3dis-filelists:
-      description: Prepare S3DIS file lists
-      main: data_conversions/prepare_s3dis_filelists --folder s3dis
-      requires: s3dis-data
-      flags:
-        $import:
-          - h5_num
-          - repeat_num
-      label: s3dis
-
-    train-seg-s3dis:
-      description: Train PointCNN for segmentation on S3DIS
-      main:
-        train_val_seg
-          --filelist s3dis/train_files_for_val_on_Area_${area}.txt
-          --filelist_val s3dis/val_files_Area_${area}.txt
-          --save_folder .
-          --model pointcnn_seg
-          --no_timestamp_folder
-          --no_code_backup
-          --log -
-      requires:
-        - s3dis-dataset
-        - tf-sampling
-      flags:
-        area:
-          description: S3DIS area for operation
-          choices: [1, 2, 3, 4, 5, 6]
-          default: 1
-          required: yes
-          arg-skip: yes
-        setting:
-          description: >
-            Setting to use for operation
-
-            NOTE: this value must support the S3DIS dataset
-            (e.g. 's3dis_x8_2048_fps').
-
-            If you want to customize the the settings, create a new
-            module in pointcnn_seg and use its name for this value.
-          default: s3dis_x8_2048_fps
-          choices:
-            - s3dis_x8_2048_fps
-          allow-other: yes
-        $import:
-          - epochs
-          - batch_size
-      label: s3dis
-
-    test-seg-s3dis:
-      description: Test trained PointCNN for segmentation on S3DIS
-      main:
-        test_general_seg
-          --filelist s3dis/val_files_Area_${area}.txt
-          --model pointcnn_seg
-          --load_ckpt ckpts/iter-${step}
-      requires:
-        - s3dis-dataset
-        - s3dis-seg-ckpts
-      flags:
-        $include:
-          - pointcnn:train-seg-s3dis#area
-          - pointcnn:train-seg-s3dis#setting
-        $import:
-          - repeat_num
-          - sample_num
-        step:
-          description: Checkpoint step to test
-          required: yes
-          arg-skip: yes
-      label: s3dis
-
-    merge-s3dis-predictions:
-      description: Merge predictions for S3DIS objects
-      main: evaluation/s3dis_merge --datafolder s3dis/Area_${area}
-      requires:
-        - s3dis-seg-predictions
-      flags:
-        $include:
-          - pointcnn:train-seg-s3dis#area
-      label: s3dis
-
-    evaluate-seg-s3dis:
-      description: Evaluate PointCNN model for segmentation on S3DIS
-      main: evaluation/eval_s3dis --data s3dis
-      requires:
-        - s3dis-dataset
-        - s3dis-seg-merged-predictions
-      label: s3dis
-
-    # ===================================================================
-    # Semantic3D segmentation
-    # ===================================================================
-
-    download-semantic3d:
-      description: Download and unpack semantic-8 benchmark files
-      pre-process: |
-        bash $MODEL_DIR/data_conversions/download_semantic3d.sh .
-        bash $MODEL_DIR/data_conversions/un7z_semantic3d.sh .
-      main: guild.pass
-      label: semantic3d
-
-    prepare-semantic3d-data:
-      description: Prepare semantic-8 benchmark data
-      main: data_conversions/prepare_semantic3d_data --folder .
-      requires: semantic3d-raw
-      flags:
-        $import:
-          - max_point_num
-          - block_size
-          - grid_size
-          - save_ply
-      label: semantic3d
-
-    prepare-semantic3d-filelists:
-      description: Prepare semantic-8 file lists
-      main: data_conversions/prepare_semantic3d_filelists --folder semantic3d
-      requires: semantic3d-data
-      flags:
-        $import:
-          - h5_num
-          - repeat_num
-      label: semantic3d
-
   resources:
-
-    # ===================================================================
-    # Modelnet resources
-    # ===================================================================
-
-    modelnet-dataset:
+    modelnet-data:
       path: data
       sources:
         - url: https://shapenet.cs.stanford.edu/media/modelnet40_ply_hdf5_2048.zip
           sha256: 07670e237db72ece0f723b9abb571534c9ad655a6456b389646587dc72bb8bae
           select: modelnet40_ply_hdf5_2048/.*
 
-    # ===================================================================
-    # MNIST resources
-    # ===================================================================
+# ===================================================================
+# Classification - TU Berlin
+# ===================================================================
 
-    mnist-dataset:
+- model: cls-tu-berlin
+  description: PointCNN classifier on TU Berlin dataset
+  extends: cls-base
+  operations:
+    prepare-data:
+      description: Prepare data for training
+      requires: tu-berlin-data
+      main:
+        data_conversions/prepare_tu_berlin_data
+          --folder tu_berlin
+          --augment
+          --create-train-test
+    train:
+      flags:
+        setting:
+          default: tu_berlin_x3_l4
+          choices:
+            - tu_berlin_x3_l4
+  resources:
+    tu-berlin-data:
+      path: tu_berlin
+      sources:
+        - url: http://cybertron.cg.tu-berlin.de/eitz/projects/classifysketch/sketches_svg.zip
+          sha256: 5c1d10dcfbfd808a842a1c6ab6122ccc104c1556b4b50294a352e73ce197c81a
+          select: svg/.*
+    prepared-data:
       path: data
       sources:
-        - operation: prepare-mnist
+        - operation: prepare-data
           select: .*\.(txt|h5)
-    mnist-raw:
+
+# ===================================================================
+# Classification - Quick Draw
+# ===================================================================
+
+- model: cls-quick-draw
+  description: PointCNN classifier on Quick Draw dataset
+  extends: cls-base
+  params:
+    train-data-path: data
+    val-data-path: ''
+  operations:
+    prepare-data:
+      description: Prepare data for training
+      main: data_conversions/download_datasets --dataset quick_draw --folder .
+    train:
+      flags:
+        setting:
+          default: quick_draw_full_x2_l6
+          choices:
+            - quick_draw_full_x2_l6
+  resources:
+    prepared-data:
+      path: data
+      sources:
+        - operation: prepare-data
+          select: quick_draw/zips/.*
+
+# ===================================================================
+# Classification - MNIST
+# ===================================================================
+
+- model: cls-mnist
+  description: PointCNN classifier on MNIST dataset
+  extends: cls-base
+  operations:
+    prepare-data:
+      description: Prepare data for training
+      main: data_conversions/prepare_mnist_data --folder mnist
+      requires: mnist-data
+    train:
+      flags:
+        setting:
+          default: mnist_x2_l4
+          choices:
+            - mnist_x2_l4
+  resources:
+    mnist-data:
       path: mnist
       sources:
         - url: http://yann.lecun.com/exdb/mnist/train-images-idx3-ubyte.gz
@@ -418,54 +169,141 @@
           sha256: 8d422c7b0a1c1c79245a5bcf07fe86e33eeafee792b84584aec276f5a2dbc4e6
         - url: http://yann.lecun.com/exdb/mnist/t10k-labels-idx1-ubyte.gz
           sha256: f7ae60f92e00ec6debd23a6088c31dbd2371eca3ffa0defaefb259924204aec6
-
-    # ===================================================================
-    # CIFAR-10 resources
-    # ===================================================================
-
-    cifar10-dataset:
+    prepared-data:
       path: data
       sources:
-        - operation: prepare-cifar10
+        - operation: prepare-data
           select: .*\.(txt|h5)
-    cifar10-raw:
+
+# ===================================================================
+# Classification - CIFAR-10
+# ===================================================================
+
+- model: cls-cifar10
+  description: PointCNN classifier on CIFAR-10 dataset
+  extends: cls-base
+  operations:
+    prepare-data:
+      description: Prepare data for training
+      main: data_conversions/prepare_cifar10_data --folder cifar10
+      requires: cifar10-data
+    train:
+      flags:
+        setting:
+          default: cifar10_x3_l4
+          choices:
+            - cifar10_x3_l4
+  resources:
+    cifar10-data:
       path: cifar10
       sources:
         - url: https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz
           sha256: 6d958be074577803d12ecdefd02955f39262c83c16fe9348329d7fe0b5c001ce
           select: cifar-10-batches-py/.*
-
-    # ===================================================================
-    # Quick Draw resources
-    # ===================================================================
-
-    quick_draw-dataset:
+    prepared-data:
       path: data
       sources:
-        - operation: prepare-quick-draw
-          select: quick_draw/zips/.*
-
-    # ===================================================================
-    # TU Berlin resources
-    # ===================================================================
-
-    tu_berlin-dataset:
-      path: data
-      sources:
-        - operation: prepare-tu-berlin
+        - operation: prepare-data
           select: .*\.(txt|h5)
-    tu_berlin-raw:
-      path: tu_berlin
+
+# ===================================================================
+# Segmentation - base config
+# ===================================================================
+
+- config: seg-base
+  params:
+    train-data-path: data/train_val_files.txt
+    val-data-path: data/test_files.txt
+  operations:
+    train:
+      description: Train model for segmentation
+      main:
+        train_val_seg
+          --model pointcnn_seg
+          --filelist {{train-data-path}}
+          --filelist_val {{val-data-path}}
+          --save_folder .
+          --no_timestamp_folder
+          --no_code_backup
+          --log -
+      requires:
+        - prepared-data
+        - tf-sampling
+      compare:
+        - =epochs
+        - =setting
+        - max t_1_acc/val as accuracy
+      flags:
+        $import:
+          - epochs
+          - batch_size
+        setting:
+          description: Setting to use for operation
+          choices: []
+          required: yes
+          allow-other: yes
+  resources:
+    tf-sampling:
       sources:
-        - url: http://cybertron.cg.tu-berlin.de/eitz/projects/classifysketch/sketches_svg.zip
-          sha256: 5c1d10dcfbfd808a842a1c6ab6122ccc104c1556b4b50294a352e73ce197c81a
-          select: svg/.*
+        - file: sampling
+          post-process: (cd sampling && bash tf_sampling_compile.sh)
 
-    # ===================================================================
-    # ShapeNet resources
-    # ===================================================================
+# ===================================================================
+# Segmentation - ShapeNet
+# ===================================================================
 
-    shapenet-raw:
+- model: seg-shapenet
+  description: PointCNN segmentation on ShapeNet dataset
+  extends: seg-base
+  operations:
+    prepare-data:
+      description: Prepare data for training
+      main: data_conversions/prepare_partseg_data --folder .
+      requires: shapenet-data
+      flags:
+        $import:
+          - save_ply
+    train:
+      flags:
+        setting:
+          description: Setting to use for operation
+          default: shapenet_x8_2048_fps
+          choices:
+            - shapenet_x8_2048_fps
+    test:
+      description: Test trained model
+      main:
+        test_shapenet_seg
+          --filelist data/test_files.txt
+          --category data/categories.txt
+          --data_folder data/test_data
+          --model pointcnn_seg
+          --load_ckpt ckpts/iter-${step}
+      requires:
+        - prepared-data
+        - checkpoints
+      flags:
+        $include:
+          - seg-shapenet:train#setting
+        $import:
+          - repeat_num
+          - sample_num
+        step:
+          description: Checkpoint step to test
+          required: yes
+          arg-skip: yes
+    evaluate:
+      description: Evaluate tests
+      main:
+        evaluation/eval_shapenet_seg
+          --folder_gt data/test_label
+          --folder_pred test_data_pred_nips_1
+          --part_avg
+      requires:
+        - prepared-data
+        - tests
+  resources:
+    shapenet-data:
       sources:
         - url: https://shapenet.cs.stanford.edu/iccv17/partseg/train_data.zip
           sha256: 2641c724e5d21400580bf5122fe442f259ce4bcabb45e68c42f31da6560c446f
@@ -479,189 +317,42 @@
           sha256: 8c5864c5b0c2f421649d3901ef0afc0200bafb934df9a4b17263e699510032b3
         - url: https://shapenet.cs.stanford.edu/iccv17/partseg/test_label.zip
           sha256: 27c86b0445f2bafb5c4a03cfc78ee55c764d617e422d663eef704a3d60b9db58
-
-    shapenet-dataset:
+    prepared-data:
       path: data
       sources:
-        - operation: prepare-shapenet
+        - operation: prepare-data
           select:
             - .*\.(txt|h5)
             - test_data
             - test_label
-
-    shapenet-seg-ckpts:
+    checkpoints:
       sources:
-        - operation: train-seg-shapenet
+        - operation: train
           select: ckpts
-
-    shapenet-seg-tests:
+    tests:
       sources:
-        - operation: test-seg-shapenet
+        - operation: test
           select: data/test_data_pred_nips_[0-9]+
 
-    # ===================================================================
-    # S3DIS resources
-    # ===================================================================
-
-    s3dis-labels:
-      path: s3dis
-      sources:
-        - operation: prepare-s3dis-labels
-          select: Area_[0-9]+
-
-    s3dis-data:
-      sources:
-        - operation: prepare-s3dis-data
-          select: s3dis
-
-    s3dis-dataset:
-      sources:
-        - operation: prepare-s3dis-filelists
-
-    s3dis-seg-ckpts:
-      sources:
-        - operation: train-seg-s3dis
-          select: ckpts
-
-    s3dis-seg-predictions:
-      sources:
-        - operation: test-seg-s3dis
-          select: s3dis
-
-    s3dis-seg-merged-predictions:
-      sources:
-        - operation: merge-s3dis-predictions
-          select: s3dis
-
-    # ===================================================================
-    # Semantic3D resources
-    # ===================================================================
-
-    semantic3d-raw:
-      sources:
-        - operation: download-semantic3d
-
-    semantic3d-data:
-      path: semantic3d
-      sources:
-        - operation: prepare-semantic3d-data
-
-    # ===================================================================
-    # tf_sampling resource
-    # ===================================================================
-
-    tf-sampling:
-      sources:
-        - file: sampling
-          post-process: (cd sampling && bash tf_sampling_compile.sh)
-
 # ===================================================================
-# Share config
+# Segmentation - S3DIS
 # ===================================================================
 
-- config: shapenet-setting-flag
-  flags:
-    setting:
-      description: >
-        Setting to use for operation
-
-        NOTE: this value must support the specified dataset. For
-        example, if you are training on the 'shapenet' dataset,
-        setting should start with 'shapenet'
-        (e.g. 'shapenet_x8_2048_fps').
-
-        If you do not specify this value, the default for the
-        specified dataset is used.
-
-        If you want to customize the the settings, create a new
-        module in pointcnn_seg and use its name for this value.
-      default: shapenet_x8_2048_fps
-      choices:
-        - shapenet_x8_2048_fps
-      allow-other: yes
-      null-label: default for dataset
-
 # ===================================================================
-# Tests
+# Segmentation - ScanNet
 # ===================================================================
 
-- test: cls-modelnet
-  steps:
-    - run: train-cls
-      flags:
-        dataset: modelnet
-        batch_size: 4
-        epochs: 1
-      expect:
-        - output: 'Loss: .+  T-1 Acc: .+  T-1 mAcc: .+'
+- model: seg-scannet
+  description: PointCNN segmentation on ScanNet (not currently supported)
+  operations:
+    train:
+      description: Placeholder for ScanNet train
+      main:
+        guild.fail 'This operation is not currently implemented. Refer'
+                   'to https://github.com/yangyanli/PointCNN#scannet-1 for'
+                   'manual steps.'
 
-- test: cls-mnist
-  steps:
-    - run: prepare-mnist
-      use-existing: yes
-    - run: train-cls
-      flags:
-        dataset: mnist
-        batch_size: 4
-        epochs: 1
-      expect:
-        - output: 'Loss: .+  T-1 Acc: .+  T-1 mAcc: .+'
 
-- test: cls-cifar10
-  steps:
-    - run: prepare-cifar10
-      use-existing: yes
-    - run: train-cls
-      flags:
-        dataset: cifar10
-        batch_size: 4
-        epochs: 1
-      expect:
-        - output: 'Loss: .+  T-1 Acc: .+  T-1 mAcc: .+'
-
-- test: cls-quick-draw
-  steps:
-    - run: prepare-quick-draw
-      use-existing: yes
-    - run: train-cls
-      flags:
-        dataset: quick_draw
-        batch_size: 4
-        epochs: 1
-
-- test: cls-tu-berlin
-  steps:
-    - run: prepare-tu-berlin
-      use-existing: yes
-    - run: train-cls
-      flags:
-        dataset: tu_berlin
-        batch_size: 4
-        epochs: 1
-      expect:
-        - output: 'Loss: .+  T-1 Acc: .+  T-1 mAcc: .+'
-
-- test: seg-shapenet
-  steps:
-    - run: prepare-shapenet
-      use-existing: yes
-    - run: train-seg-shapenet
-      flags:
-        dataset: shapenet
-        batch_size: 1
-      stop-after: 20
-      use-existing: yes
-      expect:
-        - output: 'Loss: .+  T-1 Acc: .+  T-1 mAcc: .+'
-        - output: 'Checkpoint saved to ./ckpts/iter'
-    - run: test-seg-shapenet
-      use-existing: yes
-    - run: evaluate-seg-shapenet
-      expect:
-        - output: 'IoU of Airplane:  [0-9.]+'
-        - output: 'IoU of Table:  [0-9.]+'
-        - output: 'IoU:  [0-9.]+'
-
-- test: seg-s3dis
-  steps:
-    - run: prepare-s3dis-labels
+# ===================================================================
+# Segmentation - Semantic3D
+# ===================================================================
