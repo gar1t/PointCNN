@@ -210,18 +210,35 @@
 # Segmentation - base config
 # ===================================================================
 
-- config: seg-base
-  params:
-    train-data-path: data/train_val_files.txt
-    val-data-path: data/test_files.txt
+- config: sampling-support
+  resources:
+    tf-sampling:
+      sources:
+        - file: sampling
+          post-process: (cd sampling && bash tf_sampling_compile.sh)
+
+# ===================================================================
+# Segmentation - ShapeNet
+# ===================================================================
+
+- model: seg-shapenet
+  description: PointCNN segmentation on ShapeNet dataset
+  extends: sampling-support
   operations:
+    prepare-data:
+      description: Prepare data for training
+      main: data_conversions/prepare_partseg_data --folder .
+      requires: shapenet-data
+      flags:
+        $import:
+          - save_ply
     train:
       description: Train model for segmentation
       main:
         train_val_seg
           --model pointcnn_seg
-          --filelist {{train-data-path}}
-          --filelist_val {{val-data-path}}
+          --filelist data/train_val_files.txt
+          --filelist_val data/test_files.txt
           --save_folder .
           --no_timestamp_folder
           --no_code_backup
@@ -239,37 +256,11 @@
           - batch_size
         setting:
           description: Setting to use for operation
-          choices: []
-          required: yes
-          allow-other: yes
-  resources:
-    tf-sampling:
-      sources:
-        - file: sampling
-          post-process: (cd sampling && bash tf_sampling_compile.sh)
-
-# ===================================================================
-# Segmentation - ShapeNet
-# ===================================================================
-
-- model: seg-shapenet
-  description: PointCNN segmentation on ShapeNet dataset
-  extends: seg-base
-  operations:
-    prepare-data:
-      description: Prepare data for training
-      main: data_conversions/prepare_partseg_data --folder .
-      requires: shapenet-data
-      flags:
-        $import:
-          - save_ply
-    train:
-      flags:
-        setting:
-          description: Setting to use for operation
           default: shapenet_x8_2048_fps
           choices:
             - shapenet_x8_2048_fps
+          required: yes
+          allow-other: yes
     test:
       description: Test trained model
       main:
@@ -338,6 +329,125 @@
 # Segmentation - S3DIS
 # ===================================================================
 
+- model: seg-s3dis
+  description: PointCNN segmentation on S3DIS dataset
+  extends: sampling-support
+  operations:
+    prepare-labels:
+      description: Prepare labels
+      main: data_conversions/prepare_s3dis_label --folder .
+      flags:
+        data:
+          description: Path to Stanford3dDataset_v1.2_Aligned_Version
+          required: yes
+    prepare-data:
+      description: Prepare data
+      main: data_conversions/prepare_s3dis_data --folder s3dis
+      requires: prepared-labels
+      flags:
+        $import:
+          - block_size
+          - grid_size
+          - save_ply
+    prepare-filelists:
+      description: Prepare file lists
+      main: data_conversions/prepare_s3dis_filelists --folder s3dis
+      requires: prepared-data
+      flags:
+        $import:
+          - h5_num
+          - repeat_num
+    train:
+      main:
+        train_val_seg
+          --filelist s3dis/train_files_for_val_on_Area_${area}.txt
+          --filelist_val s3dis/val_files_Area_${area}.txt
+          --save_folder .
+          --model pointcnn_seg
+          --no_timestamp_folder
+          --no_code_backup
+          --log -
+      requires:
+        - prepared-data
+        - tf-sampling
+      flags:
+        area:
+          description: S3DIS area for operation
+          choices: [1, 2, 3, 4, 5, 6]
+          default: 1
+          required: yes
+          arg-skip: yes
+        setting:
+          description: Setting to use for operation
+          default: s3dis_x8_2048_fps
+          choices:
+            - s3dis_x8_2048_fps
+          allow-other: yes
+        $import:
+          - epochs
+          - batch_size
+    test:
+      description: Test trained model
+      main:
+        test_general_seg
+          --filelist s3dis/val_files_Area_${area}.txt
+          --model pointcnn_seg
+          --load_ckpt ckpts/iter-${step}
+      requires:
+        - prepared-filelists
+        - checkpoints
+      flags:
+        $include:
+          - seg-s3dis:train#area
+          - seg-s3dis:train#setting
+        $import:
+          - repeat_num
+          - sample_num
+        step:
+          description: Checkpoint step to test
+          required: yes
+          arg-skip: yes
+
+    merge-predictions:
+      description: Merge predictions
+      main: evaluation/s3dis_merge --datafolder s3dis/Area_${area}
+      requires:
+        - tests
+      flags:
+        $include:
+          - seg-s3dis:train#area
+    evaluate:
+      description: Evaluate tests
+      main: evaluation/eval_s3dis --data s3dis
+      requires:
+        - prepared-filelist
+        - merged-predictions
+  resources:
+    prepared-labels:
+      path: s3dis
+      sources:
+        - operation: prepare-labels
+          select: Area_[0-9]+
+    prepared-data:
+      sources:
+        - operation: prepare-data
+          select: s3dis
+    prepared-filelist:
+      sources:
+        - operation: prepare-filelists
+    checkpoints:
+      sources:
+        - operation: train
+          select: ckpts
+    tests:
+      sources:
+        - operation: test
+          select: s3dis
+    merged-predictions:
+      sources:
+        - operation: merge-predictions
+          select: s3dis
+
 # ===================================================================
 # Segmentation - ScanNet
 # ===================================================================
@@ -352,7 +462,42 @@
                    'to https://github.com/yangyanli/PointCNN#scannet-1 for'
                    'manual steps.'
 
-
 # ===================================================================
 # Segmentation - Semantic3D
 # ===================================================================
+
+- model: seg-semantic3d
+  description: PointCNN segmentation on Semantic3D
+  operations:
+    download-data:
+      description: Download data files
+      exec: >
+        bash -ec "
+          which 7z || (echo 'ERROR: 7z is required for this operation' && false)
+          bash download_semantic3d.sh .
+          bash un7z_semantic3d.sh .
+        "
+      requires: download-scripts
+    prepare-data:
+      description: Prepare semantic-8 benchmark data
+      main: data_conversions/prepare_semantic3d_data --folder .
+      requires: semantic3d-raw
+      flags:
+        $import:
+          - max_point_num
+          - block_size
+          - grid_size
+          - save_ply
+    prepare-filelists:
+      description: Prepare semantic-8 file lists
+      main: data_conversions/prepare_semantic3d_filelists --folder semantic3d
+      requires: semantic3d-data
+      flags:
+        $import:
+          - h5_num
+          - repeat_num
+  resources:
+    download-scripts:
+      sources:
+        - data_conversions/download_semantic3d.sh
+        - data_conversions/un7z_semantic3d.sh
