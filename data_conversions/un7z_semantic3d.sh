@@ -1,4 +1,5 @@
-#!/usr/bin/env bash -e
+#!/usr/bin/env bash
+
 BASE_DIR=${1-../../data/semantic3d}
 
 # Helper function to skip unpacking if already unpacked. Uses markers
@@ -10,8 +11,7 @@ unpack() {
         echo "$path already unpacked, skipping"
         return
     fi
-    7z x $path -o$(dirname $path) -y
-    touch $marker
+    7z x $path -o$(dirname $path) -y && touch $marker
 }
 
 # Training data
