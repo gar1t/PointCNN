@@ -1,4 +1,12 @@
 # ===================================================================
+# Package
+# ===================================================================
+
+- package: pointcnn
+  python-requires: '>=3'
+  requires: tensorflow-any
+
+# ===================================================================
 # Classification - base config
 # ===================================================================
 
@@ -34,20 +42,6 @@
           allow-other: yes
 
 # ===================================================================
-# Classification - ScanNet
-# ===================================================================
-
-- model: cls-scannet
-  description: PointCNN classifier on ScanNet (not currently supported)
-  operations:
-    train:
-      description: Placeholder for ScanNet train
-      main:
-        guild.fail 'This operation is not currently implemented. Refer'
-                   'to https://github.com/yangyanli/PointCNN#scannet for'
-                   'manual steps.'
-
-# ===================================================================
 # Classification - ModelNet
 # ===================================================================
 
@@ -76,6 +70,20 @@
         - url: https://shapenet.cs.stanford.edu/media/modelnet40_ply_hdf5_2048.zip
           sha256: 07670e237db72ece0f723b9abb571534c9ad655a6456b389646587dc72bb8bae
           select: modelnet40_ply_hdf5_2048/.*
+
+# ===================================================================
+# Classification - ScanNet
+# ===================================================================
+
+- model: cls-scannet
+  description: PointCNN classifier on ScanNet (not currently supported)
+  operations:
+    train:
+      description: Placeholder for ScanNet train
+      main:
+        guild.fail 'This operation is not currently implemented. Refer'
+                   'to https://github.com/yangyanli/PointCNN#scannet for'
+                   'manual steps.'
 
 # ===================================================================
 # Classification - TU Berlin
@@ -501,3 +509,110 @@
       sources:
         - data_conversions/download_semantic3d.sh
         - data_conversions/un7z_semantic3d.sh
+
+# ===================================================================
+# Checks
+# ===================================================================
+
+- model: _check
+  operations:
+    cls-modelnet:
+      steps:
+        - run: cls-modelnet:train epochs=1 batch_size=4
+          expect:
+            - output: 'Loss: .+  T-1 Acc: .+  T-1 mAcc: .+'
+
+
+#./cls-modelnet    PointCNN classifier on Princeton ModelNet 40 dataset
+#./cls-scannet     PointCNN classifier on ScanNet (not currently supported)
+#./cls-tu-berlin   PointCNN classifier on TU Berlin dataset
+#./cls-mnist       PointCNN classifier on MNIST dataset
+#./cls-cifar10     PointCNN classifier on CIFAR-10 dataset
+
+#./cls-quick-draw  PointCNN classifier on Quick Draw dataset
+#./seg-s3dis       PointCNN segmentation on S3DIS dataset
+#./seg-scannet     PointCNN segmentation on ScanNet (not currently supported)
+#./seg-semantic3d  PointCNN segmentation on Semantic3D
+#./seg-shapenet    PointCNN segmentation on ShapeNet dataset
+
+
+- test: cls-modelnet
+  steps:
+    - run: train-cls
+      flags:
+        dataset: modelnet
+        batch_size: 4
+        epochs: 1
+      expect:
+        - output: 'Loss: .+  T-1 Acc: .+  T-1 mAcc: .+'
+
+- test: cls-mnist
+  steps:
+    - run: prepare-mnist
+      use-existing: yes
+    - run: train-cls
+      flags:
+        dataset: mnist
+        batch_size: 4
+        epochs: 1
+      expect:
+        - output: 'Loss: .+  T-1 Acc: .+  T-1 mAcc: .+'
+
+- test: cls-cifar10
+  steps:
+    - run: prepare-cifar10
+      use-existing: yes
+    - run: train-cls
+      flags:
+        dataset: cifar10
+        batch_size: 4
+        epochs: 1
+      expect:
+        - output: 'Loss: .+  T-1 Acc: .+  T-1 mAcc: .+'
+
+- test: cls-quick-draw
+  steps:
+    - run: prepare-quick-draw
+      use-existing: yes
+    - run: train-cls
+      flags:
+        dataset: quick_draw
+        batch_size: 4
+        epochs: 1
+
+- test: cls-tu-berlin
+  steps:
+    - run: prepare-tu-berlin
+      use-existing: yes
+    - run: train-cls
+      flags:
+        dataset: tu_berlin
+        batch_size: 4
+        epochs: 1
+      expect:
+        - output: 'Loss: .+  T-1 Acc: .+  T-1 mAcc: .+'
+
+- test: seg-shapenet
+  steps:
+    - run: prepare-shapenet
+      use-existing: yes
+    - run: train-seg-shapenet
+      flags:
+        dataset: shapenet
+        batch_size: 1
+      stop-after: 20
+      use-existing: yes
+      expect:
+        - output: 'Loss: .+  T-1 Acc: .+  T-1 mAcc: .+'
+        - output: 'Checkpoint saved to ./ckpts/iter'
+    - run: test-seg-shapenet
+      use-existing: yes
+    - run: evaluate-seg-shapenet
+      expect:
+        - output: 'IoU of Airplane:  [0-9.]+'
+        - output: 'IoU of Table:  [0-9.]+'
+        - output: 'IoU:  [0-9.]+'
+
+- test: seg-s3dis
+  steps:
+    - run: prepare-s3dis-labels
